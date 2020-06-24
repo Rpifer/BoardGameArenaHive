@@ -29,8 +29,7 @@ class Game:
 
     def on_loop(self):
         min_x, max_x, min_y, max_y = 0
-        while True:
-
+        bounds = self.board.get_bounding_limits()
         pass
 
     def on_render(self):
