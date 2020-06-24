@@ -1,4 +1,3 @@
-import sys
 
 class Piece:
     def __init__(self, color, species):
@@ -10,23 +9,64 @@ class Piece:
         self.can_traverse = False
         self.can_mimic = False
         self.can_crawl = False
-        self.mimic_piece = None
         self.crawl_spaces = 1
 
 
 def create_ant(color):
-    p = Piece(color, 'ANT')
+    p = Piece(color, 'A')
     p.can_crawl = True
     p.crawl_spaces = None
+    return p
 
 
 def create_spider(color):
-    p = Piece(color, 'SPIDER')
+    p = Piece(color, 'S')
     p.can_crawl = True
     p.crawl_spaces = 3
+    return p
+
+
+def create_queen(color):
+    p = Piece(color, 'Q')
+    p.can_crawl = True
+    p.crawl_spaces = 1
+    return p
+
 
 def create_hopper(color):
-    p = Piece(color, 'HOPPER')
+    p = Piece(color, 'H')
+    p.can_hop = True
+    p.crawl_space = 0
+    return p
+
+
+def create_beetle(color):
+    p = Piece(color, 'B')
+    p.can_climb = True
     p.can_crawl = True
-    p.crawl_spaces = 3
+    p.crawl_space = 1
+    return p
+
+
+def create_pill(color):
+    p = Piece(color, 'P')
+    p.can_zap = True
+    p.can_crawl = True
+    p.crawl_space = 1
+    return p
+
+
+def create_ladybug(color):
+    p = Piece(color, 'L')
+    p.can_traverse = True
+    p.crawl_space = 0
+    return p
+
+
+def create_mosquito(color):
+    p = Piece(color, 'M')
+    p.can_mimic = True
+    p.crawl_space = 0
+    return p
+
 
