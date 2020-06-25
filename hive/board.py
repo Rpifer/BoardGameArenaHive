@@ -1,55 +1,46 @@
-from hive import piece
-from hive import hexutil
-import math
+from hive import piece, hexutil
+import collections
 
-
-class Space(object):
-    def __init__(self, h: hexutil.Hexagon, p: piece.Piece):
-        self._tile = h
-        self.piece = p
-
-    @property
-    def tile(self):
-        return self._tile
+Tile = collections.namedtuple("Tile", ["x", "y", "z", "piece"])
 
 
 class Board:
     def __init__(self):
-        self.play_space = {(0, 0, 0): Space(hexutil.hexagon(0, 0), None)}
+        self.play_space = {(0, 0): [None]}
 
-    def add_piece(self, x, y, p: piece.Piece):
+    def add_piece(self, x, y, p):
         z = 0
-        while (x, y, z) in self.play_space and self.play_space[(x, y, z)].piece is not None:
+        while self.space_occupied(x, y, z):
             z = z + 1
 
-        if (x, y, z) in self.play_space and self.play_space[(x, y, z)].piece is None:
-            self.play_space[(x, y, z)].piece = p
+        if self.coordinate_exists(x, y, z):
+            if self.space_occupied(x, y, z):
+                self.play_space[(x, y)].insert(z, p)
+            elif z == 0:
+                self.play_space[(x, y)].pop() # remove placeholder None
+                self.play_space[(x, y)].insert(z, p)
         else:
-            self.play_space[(x, y, z)] = Space(hexutil.hexagon(x, y), p)
+            self.play_space[(x, y)] = [p]
+
+    def move_piece(self, old_x, old_y, new_x, new_y):
+        old_piece = self.play_space[old_x, old_y].pop()
+        self.add_piece(new_x, new_y, old_piece)
 
     def piece_at(self, x, y, z):
-        return self.play_space[(x, y, z)].piece
+        return self.play_space[(x, y)][z]
 
-    def tile_at(self, x, y):
-        return self.play_space[(x, y, 0)].tile
+    def coordinate_exists(self, x, y, z):
+        return (x, y) in self.play_space and z < len(self.play_space[(x, y)])
 
-    def space_occupied(self, h: hexutil.Hexagon):
-        return (h.q, h.r, 0) in self.play_space and self.play_space[(h.q, h.r, 0)] is not None
+    def space_occupied(self, x, y, z=0):
+        return self.coordinate_exists(x, y, z) and self.piece_at(x, y, z) is not None
 
-    def get_bounding_limits(self):
-        """
-        :rtype: hexutil.Point, hexutil.Point
-        """
-        min_x, max_x, min_y, max_y = 0
-        for h in self.play_space.items():
-            tile = h[1].tile
-            min_x = min(tile.q, min_x)
-            max_x = max(tile.q, max_x)
-            min_y = min(tile.r, min_y)
-            max_y = max(tile.r, max_y)
-        return hexutil.Point(min_x, min_y), hexutil.Point(max_x, max_y)
-
-
-
-
-
+    def get_occupied_tiles(self):
+        tiles = []
+        for p in self.play_space.items():
+            point = hexutil.Point(p[0][0], p[0][1])
+            if self.space_occupied(point.x, point.y, 0):
+                for z in range(0, len(p[1])):
+                    tiles.append(Tile(point.x, point.y, z, self.piece_at(point.x, point.y, z)))
+        tiles.sort(key=lambda tile: (tile.x, tile.y, tile.z))
+        return tiles
