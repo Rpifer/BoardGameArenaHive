@@ -37,18 +37,18 @@ def hexagon_to_pixel(origin_pixel: Point, p: Point, side_length):
 
 
 def pixel_to_closest_hexagon(origin_pixel, p: Point, side_length):
+    # todo: fails at large values of x
     relative_point = Point(p.x - origin_pixel.x, p.y - origin_pixel.y)
-    base_hex = Point(relative_point.x // side_length, relative_point.y // side_length)
+    base_hex = Point(round(relative_point.x / side_length / 1.5), round(relative_point.y / side_length / 1.5))
     dist = math.sqrt(abs(relative_point.x - relative_distance_x(Point(0, 0), base_hex) * side_length) ** 2
                      + abs(relative_point.y - relative_distance_y(Point(0, 0), base_hex) * side_length) ** 2)
 
     estimate_hex = base_hex
-
     if dist < side_length * math.sqrt(3) / 2:
         return estimate_hex
 
-    for i in [0, 1, -1, 2, -2, 3, -3]:
-        for j in [0, 1, -1, 2, -2, 3, -3]:
+    for i in [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6]:
+        for j in [0, 1, -1, 2, -2]:
             if i == j == 0:
                 continue
             estimate_hex = Point(base_hex.x + i, base_hex.y + j)

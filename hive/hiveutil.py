@@ -57,20 +57,35 @@ def generate_valid_moves(moving: board.Tile, tiles: List[board.Tile]):
 
 
 def hex_crawable(start: board.Tile, end: board.Tile, tiles: List[board.Tile], movement_cloud):
+    tiles = tiles[:]  # duplicate so to not change original
+    # remove self from tiles to not interfere with movement
+    tiles.remove(start)
+    possible_paths = [[hexutil.Point(start.x, start.y)]]
+    visited = [hexutil.Point(start.x, start.y)]
+
+    spots = start.piece.crawl_spaces or 10000
+    for i in range(1, start.piece.crawl_spaces):
+        for p in possible_paths[i-1]:
+            neighbors = hexutil.touching_hexagons(p)
+            for n in neighbors:
+                if n in movement_cloud:
+                    return True
+
+    # get neighbors of start,
+    # if can slide to and in movement cloud
+        # add to possible path
+
     return True
     # check closest path that can be reached via traversal rules, ie can slide
 
 
-def can_slide_to(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile]):
-    """Assumes pieces are next to each other"""
+def can_slide_to(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Tile]):
+    """Assumes start is next to end, remove start before calling"""
     match = next((i for i in range(0, len(tiles)) if tiles[i].x == end.x and tiles[i].y == end.y), None)
     # can slide there if something is already there
     if match is not None:
         return False
 
-    tiles = tiles[:]  # duplicate so to not change original
-    # remove self from tiles to not interfere with movement
-    tiles.remove(start)
     neighbors = hexutil.touching_hexagons(hexutil.Point(start.x, start.y))
     touches = 0
     max_continuous_touches = 0
