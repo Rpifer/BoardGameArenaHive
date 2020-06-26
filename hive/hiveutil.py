@@ -49,43 +49,68 @@ def generate_valid_moves(moving: board.Tile, tiles: List[board.Tile]):
     possible_moves = []
     if moving.piece.can_crawl:
         for possible_move in full_space:
-            if hex_crawable(moving, possible_move, tiles, full_space):
+            if space_crawable(moving, possible_move, tiles, full_space):
                 possible_moves.append(possible_move)
     # generate spots that it can go based on rules
     # confirm that it can get to each of those spots via movement rules
     # confirm that each space it will occupy is a valid hive
 
 
-def hex_crawable(start: board.Tile, end: board.Tile, tiles: List[board.Tile], movement_cloud):
+def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile], movement_cloud):
+    # todo: need to convert possible paths to a linked tree that can understand direction and force continue in
+    #  that direction and be able to switch directions if applicable
     tiles = tiles[:]  # duplicate so to not change original
     # remove self from tiles to not interfere with movement
     tiles.remove(start)
     possible_paths = [[hexutil.Point(start.x, start.y)]]
     visited = [hexutil.Point(start.x, start.y)]
 
-    spots = start.piece.crawl_spaces or 10000
-    for i in range(1, start.piece.crawl_spaces):
+    spots = start.piece.crawl_spaces or 50
+    for i in range(1, spots + 1):
+        possible_paths.append([])
         for p in possible_paths[i-1]:
             neighbors = hexutil.touching_hexagons(p)
             for n in neighbors:
-                if n in movement_cloud:
-                    return True
+                if n in movement_cloud and can_slide_to(p, n, tiles) \
+                        and (n not in visited or start.piece.crawl_spaces is not None): # stop ant from going exponential
+                    if n == end and start.piece.crawl_spaces is None:
+                        return True
+                    visited.append(n)
+                    possible_paths[i].append(n)
+                elif n == end:
+                    return False
 
-    # get neighbors of start,
-    # if can slide to and in movement cloud
-        # add to possible path
-
-    return True
+    return end in possible_paths[spots]
     # check closest path that can be reached via traversal rules, ie can slide
 
 
 def can_slide_to(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Tile]):
-    """Assumes start is next to end, remove start before calling"""
+    """Assumes start is next to end, remove start before calling
+    can slide if end has 2 continuous spaces AND start is in one of those spaces"""
     match = next((i for i in range(0, len(tiles)) if tiles[i].x == end.x and tiles[i].y == end.y), None)
     # can slide there if something is already there
     if match is not None:
         return False
 
+    neighbors = hexutil.touching_hexagons(end)
+    continuous_spaces = 0
+    start_in_continuous = False
+    for j in range(-1, len(neighbors)):
+        n = neighbors[j]
+        match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y), None)
+        if match is not None:
+            continuous_spaces = 0
+            start_in_continuous = False
+        else:
+            continuous_spaces += 1
+            if start == n:
+                start_in_continuous = True
+            if continuous_spaces >= 2 and start_in_continuous:
+                return True
+    return False
+
+
+def can_start_crawl(start: hexutil.Point, tiles: List[board.Tile]):
     neighbors = hexutil.touching_hexagons(hexutil.Point(start.x, start.y))
     touches = 0
     max_continuous_touches = 0
@@ -101,10 +126,7 @@ def can_slide_to(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Til
 
     if touches >= 5:
         return False
-    if touches == continuous_touches:
+    if touches == max_continuous_touches:
         return True
     else:
         return False
-    # can slide if up to 4 continous pieces are touching
-    # cannot slide if 5 pieces are touching
-    # cannot slide if 2 - 4 non continous pieces are touching it

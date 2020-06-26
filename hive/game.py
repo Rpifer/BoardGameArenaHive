@@ -63,7 +63,10 @@ class Game:
     def on_event(self, event):
         if event.type == pygame.QUIT:
             self._running = False
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                pygame.quit()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
             clicked = pygame.mouse.get_pos()
             if event.button == 4:
                 self.scale = self.scale * 1.15
@@ -88,11 +91,11 @@ class Game:
                 else:
                     self.selected_piece = None
 
-        if event.type == pygame.MOUSEBUTTONUP:
+        elif event.type == pygame.MOUSEBUTTONUP:
             self.drag = False
             self.last_coord = None
 
-        if event.type == pygame.MOUSEMOTION:
+        elif event.type == pygame.MOUSEMOTION:
             if self.drag:
                 place = pygame.mouse.get_pos()
                 coord = hexutil.Point(place[0], place[1])
@@ -151,7 +154,7 @@ class Game:
         font = pygame.font.SysFont(None, 48)
         self._board_surface.fill((219, 210, 127))
         for tile in self.board.get_occupied_tiles():
-            text = font.render(tile.piece.species, True, (255, 0, 0))
+            text = font.render(tile.piece.species + "({0},{1})".format(tile.x, tile.y), True, (255, 0, 0))
             if tile.piece is self.selected_piece:
                 text = font.render(tile.piece.species, True, (0, 180, 180))
 
