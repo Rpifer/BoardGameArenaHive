@@ -29,21 +29,33 @@ def relative_distance_y(p1: Point, p2: Point):
     distance += delta_point.y * 1.5
     return distance
 
-
-def bounding_rectangle(points: List[Point]):
-    min_x, min_y, max_x, max_y = 0, 0, 0, 0
-    for p in points:
-        min_x = min(min_x, p.x)
-        min_y = min(min_y, p.y)
-        max_x = min(max_x, p.x)
-        max_y = min(max_y, p.y)
-    return Point(min_x - 1, min_y - 1), Point(max_x + 1, max_y + 1)
-
-
 def hexagon_to_pixel(origin_pixel: Point, p: Point, side_length):
     x = relative_distance_x(Point(0, 0), p) * side_length
     y = relative_distance_y(Point(0, 0), p) * side_length
     return Point(int(x + origin_pixel.x), int(y + origin_pixel.y))
+
+
+def pixel_to_closest_hexagon(origin_pixel, p: Point, side_length):
+    relative_point = Point(p.x - origin_pixel.x, p.y - origin_pixel.y)
+    base_hex = Point(relative_point.x // side_length, relative_point.y // side_length)
+    dist = math.sqrt(abs(relative_point.x - relative_distance_x(Point(0, 0), base_hex) * side_length) ** 2
+                     + abs(relative_point.y - relative_distance_y(Point(0, 0), base_hex) * side_length) ** 2)
+
+    estimate_hex = base_hex
+
+    if dist < side_length * math.sqrt(3) / 2:
+        return estimate_hex
+
+    for i in [0, 1, -1, 2, -2, 3, -3]:
+        for j in [0, 1, -1, 2, -2, 3, -3]:
+            if i == j == 0:
+                continue
+            estimate_hex = Point(base_hex.x + i, base_hex.y + j)
+            dist = math.sqrt(abs(relative_point.x - relative_distance_x(Point(0, 0), estimate_hex) * side_length) ** 2
+                             + abs(relative_point.y - relative_distance_y(Point(0, 0), estimate_hex) * side_length) ** 2)
+            if dist < side_length * math.sqrt(3) / 2:
+                return estimate_hex
+    return None
 
 
 def polygon_corners(origin_pixel: Point, p: Point, side_length):
@@ -58,9 +70,6 @@ def polygon_corners(origin_pixel: Point, p: Point, side_length):
 def hexagon_corner_offset(corner, side_length):
     angle = math.radians(corner * 60 + 30)
     return Point(side_length * math.cos(angle), side_length * math.sin(angle))
-
-
-
 
 # # Generated code -- CC0 -- No Rights Reserved -- http://www.redblobgames.com/grids/hexagons/
 #  OLD HEX UTIL

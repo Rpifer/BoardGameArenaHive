@@ -1,4 +1,3 @@
-import uuid
 
 class Piece:
     def __init__(self, color, species):
@@ -11,7 +10,6 @@ class Piece:
         self.can_mimic = False
         self.can_crawl = False
         self.crawl_spaces = 1
-        self.id = uuid.uuid1()
 
 
 def create_ant(color):
