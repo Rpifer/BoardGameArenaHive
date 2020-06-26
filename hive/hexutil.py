@@ -29,6 +29,7 @@ def relative_distance_y(p1: Point, p2: Point):
     distance += delta_point.y * 1.5
     return distance
 
+
 def hexagon_to_pixel(origin_pixel: Point, p: Point, side_length):
     x = relative_distance_x(Point(0, 0), p) * side_length
     y = relative_distance_y(Point(0, 0), p) * side_length
@@ -52,7 +53,8 @@ def pixel_to_closest_hexagon(origin_pixel, p: Point, side_length):
                 continue
             estimate_hex = Point(base_hex.x + i, base_hex.y + j)
             dist = math.sqrt(abs(relative_point.x - relative_distance_x(Point(0, 0), estimate_hex) * side_length) ** 2
-                             + abs(relative_point.y - relative_distance_y(Point(0, 0), estimate_hex) * side_length) ** 2)
+                             + abs(
+                relative_point.y - relative_distance_y(Point(0, 0), estimate_hex) * side_length) ** 2)
             if dist < side_length * math.sqrt(3) / 2:
                 return estimate_hex
     return None
@@ -70,6 +72,17 @@ def polygon_corners(origin_pixel: Point, p: Point, side_length):
 def hexagon_corner_offset(corner, side_length):
     angle = math.radians(corner * 60 + 30)
     return Point(side_length * math.cos(angle), side_length * math.sin(angle))
+
+
+def touching_hexagons(point: Point):
+    """returns in order of unit circle convention"""
+    # get all 6 touching points
+    if point.y % 2 == 0:
+        return [Point(point.x + 1, point.y), Point(point.x, point.y - 1), Point(point.x - 1, point.y - 1),
+                Point(point.x - 1, point.y), Point(point.x - 1, point.y + 1), Point(point.x, point.y + 1)]
+    else:
+        return [Point(point.x + 1, point.y), Point(point.x + 1, point.y - 1), Point(point.x, point.y - 1),
+                Point(point.x - 1, point.y), Point(point.x, point.y + 1), Point(point.x + 1, point.y + 1)]
 
 # # Generated code -- CC0 -- No Rights Reserved -- http://www.redblobgames.com/grids/hexagons/
 #  OLD HEX UTIL

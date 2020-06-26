@@ -1,4 +1,4 @@
-from hive import piece, hexutil
+from hive import piece, hexutil, player
 import collections
 
 Tile = collections.namedtuple("Tile", ["x", "y", "z", "piece"])
@@ -7,6 +7,8 @@ Tile = collections.namedtuple("Tile", ["x", "y", "z", "piece"])
 class Board:
     def __init__(self):
         self.play_space = {(0, 0): [None]}
+        self.player_1 = player.Player()
+        self.player_2 = player.Player()
 
     def add_piece(self, x, y, p):
         z = 0
@@ -17,7 +19,7 @@ class Board:
             if self.space_occupied(x, y, z):
                 self.play_space[(x, y)].insert(z, p)
             elif z == 0:
-                self.play_space[(x, y)].pop() # remove placeholder None
+                self.play_space[(x, y)].pop()  # remove placeholder None
                 self.play_space[(x, y)].insert(z, p)
         else:
             self.play_space[(x, y)] = [p]
@@ -44,3 +46,11 @@ class Board:
                     tiles.append(Tile(point.x, point.y, z, self.piece_at(point.x, point.y, z)))
         tiles.sort(key=lambda tile: (tile.x, tile.y, tile.z))
         return tiles
+
+
+def new_default_board():
+    b = Board()
+    b.player_1.piece_reserve = piece.create_reserve("W")
+    b.player_2.piece_reserve = piece.create_reserve("B")
+    return b
+
