@@ -49,11 +49,14 @@ def generate_hive_movement_cloud(tiles: List[board.Tile]):
 
 
 def generate_valid_moves(moving: board.Tile, tiles: List[board.Tile]):
-    full_space = generate_hive_movement_cloud(tiles)
+    temp = tiles[:]
+    if moving in temp:
+        temp.remove(moving)
+    full_space_without_mover = generate_hive_movement_cloud(temp)
     possible_moves = []
     if moving.piece.can_crawl:
-        for possible_move in full_space:
-            if space_crawable(moving, possible_move, tiles, full_space):
+        for possible_move in full_space_without_mover:
+            if space_crawable(moving, possible_move, tiles, full_space_without_mover):
                 possible_moves.append(possible_move)
     # generate spots that it can go based on rules
     # confirm that it can get to each of those spots via movement rules
@@ -61,33 +64,34 @@ def generate_valid_moves(moving: board.Tile, tiles: List[board.Tile]):
 
 
 def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile], movement_cloud):
-    # todo: need to convert possible paths to a linked tree that can understand direction and force continue in
-    #  that direction and be able to switch directions if applicable
-    tiles = tiles[:]  # duplicate so to not change original
-    # remove self from tiles to not interfere with movement
-    tiles.remove(start)
-
+    # todo: need to be able to work in 3d space
     possible_paths = [deque()]
     possible_paths[0].append(Move(hexutil.Point(start.x, start.y), 0))
 
     current_path = possible_paths[0]
-    spots = start.piece.crawl_spaces or 50
+    spots = start.piece.crawl_spaces or 20
     for i in range(1, spots + 1):
-        paths_to_extend = possible_paths
+        paths_to_extend = possible_paths[:]
         p: deque[Move]
         for p in paths_to_extend:
-            path_to_be_removed = p
             neighbors = hexutil.touching_hexagons(p[-1].position)
             for n in neighbors:
-                if n in movement_cloud and can_slide_to(p, n, tiles):  # not (dir != p[-1]dir and not p[-2].hex == n)
-                    if n == end and start.piece.crawl_spaces is None:
+                if n in movement_cloud and can_slide_to(p[-1].position, n, tiles):
+                    # not (dir != p[-1]dir and not p[-2].hex == n)
+                    if len(p) >= 2 and p[-2].position == n:
+                        continue
+                    elif n == end and start.piece.crawl_spaces is None:
                         return True
                     # todo: check direction in if and then append new path with p + deque(move)
-                    possible_paths[i].append(n)
+                    possible_paths.append(p + deque([Move(n, direction_of_crawl(p[-1].position, n, tiles))]))
+                    # at end and cannot be moved to
                 elif n == end:
                     return False
 
-    return end in possible_paths[spots]
+            possible_paths.remove(path_to_be_removed)
+
+    return any(move[-1].position == end for move in possible_paths)
+    # return end in possible_paths[spots]
     # check closest path that can be reached via traversal rules, ie can slide
 
 
@@ -104,6 +108,10 @@ def direction_of_crawl(start: hexutil.Point, end: hexutil.Point, tiles: List[boa
         match = next((i for i in range(0, len(tiles)) if tiles[i].x == p.x and tiles[i].y == p.y), None)
         if match is not None:
             static_piece = p
+            break
+
+    if static_piece is None:
+        return 0  # not valid move
     # calculate angle of start and angle of end in relation to that piece
     x_start = hexutil.relative_distance_x(static_piece, start)
     y_start = hexutil.relative_distance_y(static_piece, start)
@@ -139,8 +147,12 @@ def can_slide_to(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Til
     """Assumes start is next to end, remove start before calling
     can slide if end has 2 continuous spaces AND start is in one of those spaces"""
     match = next((i for i in range(0, len(tiles)) if tiles[i].x == end.x and tiles[i].y == end.y), None)
-    # can slide there if something is already there
+    # todo, needs to be removed if on top of hive
+    # cant slide there if something is already there
     if match is not None:
+        return False
+
+    if direction_of_crawl(start, end, tiles) == 0:
         return False
 
     neighbors = hexutil.touching_hexagons(end)

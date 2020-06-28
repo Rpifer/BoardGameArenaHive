@@ -1,5 +1,5 @@
 import unittest
-from hive import hexutil, hiveutil, board, piece
+from hive import hexutil, hiveutil, board, piece, game
 
 
 class TestHiveUtilIsOneHive(unittest.TestCase):
@@ -217,39 +217,83 @@ class TestHiveUtilCanSlide(unittest.TestCase):
 class TestHiveUtilSpaceCrawable(unittest.TestCase):
     def test_can_crawl_to_beetle(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_beetle('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
         ]
-        self.assertTrue(hiveutil.space_crawable(t[0], hexutil.Point(0, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_beetle('W')),
+                                                hexutil.Point(0, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+
+    def test_can_crawl_to_beetle_on_top(self):
+        t = [
+            board.Tile(1, 0, 0, piece.create_ladybug('W')),
+            board.Tile(1, 1, 0, piece.create_ladybug('W')),
+        ]
+        self.assertTrue(hiveutil.space_crawable(board.Tile(1, 0, 1, piece.create_beetle('W')),
+                                                hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+
+    def test_can_not_crawl_to_beetle_on_top_too_far(self):
+        t = [
+            board.Tile(1, 0, 0, piece.create_ladybug('W')),
+            board.Tile(1, 1, 0, piece.create_ladybug('W')),
+            board.Tile(1, 2, 0, piece.create_ladybug('W')),
+        ]
+        self.assertTrue(hiveutil.space_crawable(board.Tile(1, 0, 1, piece.create_beetle('W')),
+                                                hexutil.Point(1, 2), t, hiveutil.generate_hive_movement_cloud(t)))
+
+    def test_can_not_crawl_to_beetle__on_top_gate(self):
+        t = [
+            board.Tile(0, 0, 0, piece.create_ladybug('W')),
+            board.Tile(-1, -1, 0, piece.create_ladybug('W')),
+            board.Tile(-1, -1, 1, piece.create_beetle('W')),
+            board.Tile(1, 0, 0, piece.create_ladybug('W')),
+            board.Tile(0, -1, 0, piece.create_ladybug('W')),
+            board.Tile(0, -1, 1, piece.create_beetle('W')),
+        ]
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 1, piece.create_beetle('W')),
+                                                hexutil.Point(0, -1), t, hiveutil.generate_hive_movement_cloud(t)))
 
     def test_can_not_crawl_to_beetle_out_of_range(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_beetle('W')),
+
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
         ]
-        self.assertFalse(hiveutil.space_crawable(t[0], hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertFalse(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_beetle('W')),
+                                                 hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
 
     def test_can_crawl_to_ant(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_ant('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
         ]
-        self.assertTrue(hiveutil.space_crawable(t[0], hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_ant('W'))
+                                                , hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
 
     def test_can_not_crawl_to_ant_gates(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_ant('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
             board.Tile(2, 0, 0, piece.create_ladybug('W')),
             board.Tile(2, 1, 0, piece.create_ladybug('W')),
             board.Tile(2, 2, 0, piece.create_ladybug('W')),
             board.Tile(1, 2, 0, piece.create_ladybug('W')),
         ]
-        self.assertFalse(hiveutil.space_crawable(t[0], hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertFalse(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_ant('W')),
+                                                 hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+
+    def test_can_crawl_to_ant_gates_in_big_ring(self):
+        t = [
+            board.Tile(2, 0, 0, piece.create_ladybug('W')),
+            board.Tile(3, 0, 0, piece.create_ladybug('W')),
+            board.Tile(4, 0, 0, piece.create_ladybug('W')),
+            board.Tile(4, 1, 0, piece.create_ladybug('W')),
+            board.Tile(4, 2, 0, piece.create_ladybug('W')),
+            board.Tile(3, 3, 0, piece.create_ladybug('W')),
+            board.Tile(2, 3, 0, piece.create_ladybug('W')),
+            board.Tile(1, 3, 0, piece.create_ladybug('W')),
+            board.Tile(1, 2, 0, piece.create_ladybug('W'))
+        ]
+        self.assertTrue(hiveutil.space_crawable(board.Tile(1, 0, 0, piece.create_ant('W'))
+                                                , hexutil.Point(3, 1), t, hiveutil.generate_hive_movement_cloud(t)))
 
     def test_can_not_crawl_to_ant_gates_in_big_ring(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_ant('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
             board.Tile(2, 0, 0, piece.create_ladybug('W')),
             board.Tile(3, 0, 0, piece.create_ladybug('W')),
@@ -261,32 +305,32 @@ class TestHiveUtilSpaceCrawable(unittest.TestCase):
             board.Tile(1, 3, 0, piece.create_ladybug('W')),
             board.Tile(1, 2, 0, piece.create_ladybug('W'))
         ]
-        self.assertFalse(hiveutil.space_crawable(t[0], hexutil.Point(3, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertFalse(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_ant('W'))
+                                                 , hexutil.Point(3, 1), t, hiveutil.generate_hive_movement_cloud(t)))
 
     def test_can_crawl_to_spider(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_spider('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
         ]
-        self.assertTrue(hiveutil.space_crawable(t[0], hexutil.Point(2, 0), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_spider('W')),
+                                                hexutil.Point(2, 0), t, hiveutil.generate_hive_movement_cloud(t)))
 
-    def test_can_not_crawl_to_spider(self):
+    def test_can_not_crawl_to_spider_two_space(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_spider('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
         ]
-        self.assertFalse(hiveutil.space_crawable(t[0], hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertFalse(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_spider('W')),
+                                                 hexutil.Point(1, 1), t, hiveutil.generate_hive_movement_cloud(t)))
 
-    def test_can_not_crawl_to_spider(self):
+    def test_can_not_crawl_to_spider_back_and_forth(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_spider('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
         ]
-        self.assertFalse(hiveutil.space_crawable(t[0], hexutil.Point(0, 1), t, hiveutil.generate_hive_movement_cloud(t)))
+        self.assertFalse(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_spider('W')),
+                                                 hexutil.Point(0, 1), t, hiveutil.generate_hive_movement_cloud(t)))
 
     def test_can_crawl_to_spider_strange_case(self):
         t = [
-            board.Tile(0, 0, 0, piece.create_spider('W')),
             board.Tile(1, 0, 0, piece.create_ladybug('W')),
             board.Tile(2, 0, 0, piece.create_ladybug('W')),
             board.Tile(2, 1, 0, piece.create_ladybug('W')),
@@ -296,8 +340,11 @@ class TestHiveUtilSpaceCrawable(unittest.TestCase):
             board.Tile(0, 2, 0, piece.create_ladybug('W')),
         ]
         cloud = hiveutil.generate_hive_movement_cloud(t)
-        self.assertTrue(hiveutil.space_crawable(t[0], hexutil.Point(1, 2), t, cloud))
-        self.assertTrue(hiveutil.space_crawable(t[0], hexutil.Point(1, 1), t, cloud))
-        self.assertTrue(hiveutil.space_crawable(t[0], hexutil.Point(2, -1), t, cloud))
-        self.assertTrue(hiveutil.space_crawable(t[0], hexutil.Point(-1, 2), t, cloud))
-
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_spider('W'))
+                                                , hexutil.Point(1, 2), t, cloud))
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_spider('W')),
+                                                hexutil.Point(1, 1), t, cloud))
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_spider('W')),
+                                                hexutil.Point(2, -1), t, cloud))
+        self.assertTrue(hiveutil.space_crawable(board.Tile(0, 0, 0, piece.create_spider('W')),
+                                                hexutil.Point(-1, 2), t, cloud))
