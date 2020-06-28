@@ -1,8 +1,8 @@
 import requests
 import pprint
 
-user = 'rpifer@udel.edu'
-pwd = 'UtHGRSFfmlSXVvxIvDX'
+user = ''
+pwd = ''
 
 url_login = 'http://en.boardgamearena.com/account/account/login.html'
 prm_login = {'email': user, 'password': pwd, 'rememberme': 'on',
