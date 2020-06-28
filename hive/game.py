@@ -45,6 +45,15 @@ class Game:
     def player_piece_offset(self, num):
         return int(self.height * num / 17) + 1
 
+    def convert_to_play_area_coordinates(self, x, y):
+        return x - self.width + int(self.width * self.board_x_split_percentage), y
+
+    def convert_from_play_area_coordinates(self, x, y):
+        return x + self.width - int(self.width * self.board_x_split_percentage), y
+
+    def font(self):
+        return pygame.font.SysFont(None, self.scale)
+
     def on_init(self):
         pygame.init()
         self._display_surface = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
@@ -69,19 +78,19 @@ class Game:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             clicked = pygame.mouse.get_pos()
             if event.button == 4:
-                self.scale = self.scale * 1.15
+                # prevents getting trapped at small scales
+                self.scale = int(self.scale * 1.15) + 1
             elif event.button == 5:
-                self.scale = self.scale * .85
+                self.scale = max(int(self.scale * .85), 2)
             elif event.button == 3:
                 self.drag = True
                 self.last_coord = hexutil.Point(clicked[0], clicked[1])
 
             elif event.button == 1:
+                clicked = self.convert_to_play_area_coordinates(clicked[0], clicked[1])
                 est = hexutil.pixel_to_closest_hexagon(self.origin,
-                                                       hexutil.Point(clicked[0]
-                                                                     - self.width
-                                                                     + int(self.width * self.board_x_split_percentage),
-                                                                     clicked[1]), self.scale)
+                                                       hexutil.Point(clicked[0], clicked[1])
+                                                       , self.scale)
                 if est is not None:
                     # todo: figure out z axis here
                     if self.board.space_occupied(est.x, est.y):
@@ -99,6 +108,7 @@ class Game:
             if self.drag:
                 place = pygame.mouse.get_pos()
                 coord = hexutil.Point(place[0], place[1])
+                # don't need to convert so it can technically move offscreen correctly
                 self.origin = hexutil.Point(self.origin.x + (coord.x - self.last_coord.x),
                                             self.origin.y + (coord.y - self.last_coord.y), )
                 self.last_coord = coord
@@ -114,8 +124,8 @@ class Game:
         pygame.display.flip()  # flip the screen like in a flipbook
 
     def render_player_space(self):
-        gap_width = self.width - int(self.width * self.board_x_split_percentage)
-        pygame.draw.line(self._player_surface, (100, 100, 100), (gap_width - 1, 0), (gap_width - 1, self.height))
+        line_start = self.convert_to_play_area_coordinates(0, self.height)
+        pygame.draw.line(self._player_surface, (100, 100, 100), (line_start[0] - 1, 0), (line_start[0] - 1, self.height))
         font = pygame.font.SysFont(None, 36)
         labels = []
         tile: piece.Piece
@@ -151,36 +161,42 @@ class Game:
 
     def render_board_space(self):
         labels = []
-        font = pygame.font.SysFont(None, 48)
         self._board_surface.fill((219, 210, 127))
         for tile in self.board.get_occupied_tiles():
-            text = font.render(tile.piece.species + "({0},{1})".format(tile.x, tile.y), True, (255, 0, 0))
-            if tile.piece is self.selected_piece:
-                text = font.render(tile.piece.species, True, (0, 180, 180))
-
-            text_rect = text.get_rect()
-            # set the center of the rectangular object.
-            center = hexutil.hexagon_to_pixel(self.origin,
-                                              hexutil.Point(tile.x, tile.y),
-                                              self.scale)
-            text_rect.center = (center.x + self.width - int(self.width * self.board_x_split_percentage), center.y)
-            labels.append((text, text_rect))
-
-            corners = hexutil.polygon_corners(self.origin, hexutil.Point(tile.x, tile.y), self.scale)
-            pygame.draw.polygon(self._board_surface,
-                                ((50, 50, 50), (255, 254, 242))[tile.piece.color == 'W'],
-                                corners,
-                                0)
-            pygame.draw.polygon(self._board_surface, (0, 0, 0), corners, 2)
+            self.render_piece_in_play(self._board_surface, tile, self.scale, labels)
 
         self._display_surface.blit(self._board_surface,
-                                   (self.width - int(self.width * self.board_x_split_percentage), 0))
+                                   self.convert_from_play_area_coordinates(0, 0))
         for label in labels:
             self._display_surface.blit(label[0], label[1])
+
+    def render_piece_in_play(self, surface, tile, scale, labels_to_render):
+        font = self.font()
+        text = font.render(tile.piece.species, True, (255, 0, 0))
+        if tile.piece is self.selected_piece:
+            text = font.render(tile.piece.species, True, (0, 180, 180))
+
+        text_rect = text.get_rect()
+        # set the center of the rectangular object.
+        center = hexutil.hexagon_to_pixel(self.origin,
+                                          hexutil.Point(tile.x, tile.y),
+                                          scale)
+        text_rect.center = self.convert_from_play_area_coordinates(center.x, center.y)
+        labels_to_render.append((text, text_rect))
+
+        corners = hexutil.polygon_corners(self.origin, hexutil.Point(tile.x, tile.y), scale)
+        pygame.draw.polygon(surface,
+                            ((50, 50, 50), (235, 233, 209))[tile.piece.color == 'W'],
+                            corners,
+                            0)
+        pygame.draw.polygon(surface, ((90, 90, 90), (242, 241, 223))[tile.piece.color == 'W'], corners, scale // 12)
+
+
 
     def on_cleanup(self):
         self._running = False
         pygame.quit()
+
 
     def on_execute(self):
         if not self.on_init():

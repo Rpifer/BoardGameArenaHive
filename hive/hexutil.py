@@ -20,14 +20,17 @@ def relative_distance_x(p1: Point, p2: Point):
 
     # add rest of x change
     distance += math.sqrt(3) * delta_point.x
-    return distance
+    # scale by 1.1 to allow for spacing between pieces on render.
+    return distance * 1.1
 
 
 def relative_distance_y(p1: Point, p2: Point):
     distance = 0
     delta_point = Point(p2.x - p1.x, p2.y - p1.y)
     distance += delta_point.y * 1.5
-    return distance
+
+    # scale by 1.1 to allow for spacing between pieces on render.
+    return distance * 1.1
 
 
 def hexagon_to_pixel(origin_pixel: Point, p: Point, side_length):
