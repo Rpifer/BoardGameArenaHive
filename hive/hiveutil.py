@@ -66,6 +66,7 @@ def generate_valid_moves(moving: board.Tile, tiles: List[board.Tile]):
 def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile], movement_cloud):
     # todo: need to be able to work in 3d space
     possible_paths = [deque()]
+    # todo: add z axis to Move object
     possible_paths[0].append(Move(hexutil.Point(start.x, start.y), 0))
 
     current_path = possible_paths[0]
@@ -77,13 +78,14 @@ def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile
             path_to_be_removed = p
             neighbors = hexutil.touching_hexagons(p[-1].position)
             for n in neighbors:
+                # todo: add z axis in can_slide check
                 if n in movement_cloud and can_slide_to(p[-1].position, n, tiles):
                     # not (dir != p[-1]dir and not p[-2].hex == n)
                     if len(p) >= 2 and p[-2].position == n:
                         continue
                     elif n == end and start.piece.crawl_spaces is None:
                         return True
-                    # todo: check direction in if and then append new path with p + deque(move)
+                    # todo: add in z axis when adding new move (axis of start z, cannot change)
                     possible_paths.append(p + deque([Move(n, direction_of_crawl(p[-1].position, n, tiles))]))
                     # at end and cannot be moved to
                 elif n == end:
@@ -144,9 +146,10 @@ def angle_of_vector(x, y):
     return theta
 
 
-def can_slide_to(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Tile]):
+def can_slide_to(start, end: hexutil.Point, tiles: List[board.Tile]):
     """Assumes start is next to end, remove start before calling
     can slide if end has 2 continuous spaces AND start is in one of those spaces"""
+    # todo, add in z axis for match checkin
     match = next((i for i in range(0, len(tiles)) if tiles[i].x == end.x and tiles[i].y == end.y), None)
     # todo, needs to be removed if on top of hive
     # cant slide there if something is already there
@@ -161,6 +164,7 @@ def can_slide_to(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Til
     start_in_continuous = False
     for j in range(-1, len(neighbors)):
         n = neighbors[j]
+        # todo, again add in z axis of start tiles
         match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y), None)
         if match is not None:
             continuous_spaces = 0
@@ -175,6 +179,7 @@ def can_slide_to(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Til
 
 
 def can_start_crawl(start: hexutil.Point, tiles: List[board.Tile]):
+    # todo, probably going to need z axis here too
     neighbors = hexutil.touching_hexagons(hexutil.Point(start.x, start.y))
     touches = 0
     max_continuous_touches = 0
@@ -195,10 +200,3 @@ def can_start_crawl(start: hexutil.Point, tiles: List[board.Tile]):
     else:
         return False
 
-
-t = [
-    board.Tile(2, 0, 0, piece.create_ladybug('W')),
-    board.Tile(2, 1, 0, piece.create_ladybug('W'))
-]
-first = t.pop(0)
-print(direction_of_crawl(hexutil.Point(3, 0), hexutil.Point(3, 1), t))
