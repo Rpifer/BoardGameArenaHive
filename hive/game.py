@@ -41,6 +41,16 @@ class Game:
                 'M': hexutil.Point(self.player_piece_offset(1) * 3, self.player_piece_offset(14)),
                 'L': hexutil.Point(self.player_piece_offset(1), self.player_piece_offset(15)),
                 'P': hexutil.Point(self.player_piece_offset(1) * 3, self.player_piece_offset(16))})
+        self.species_color_map = {
+            "A": (17, 99, 207),
+            "B": (182, 20, 196),
+            "H": (45, 153, 41),
+            "L": (179, 13, 7),
+            "M": (156, 156, 156),
+            "P": (86, 219, 184),
+            "Q": (227, 219, 59),
+            "S": (115, 85, 46),
+        }
 
     def player_piece_offset(self, num):
         return int(self.height * num / 17) + 1
@@ -52,7 +62,7 @@ class Game:
         return x + self.width - int(self.width * self.board_x_split_percentage), y
 
     def font(self):
-        return pygame.font.SysFont(None, self.scale)
+        return pygame.font.SysFont("comicsansms", self.scale)
 
     def on_init(self):
         pygame.init()
@@ -172,9 +182,7 @@ class Game:
 
     def render_piece_in_play(self, surface, tile, scale, labels_to_render):
         font = self.font()
-        text = font.render(tile.piece.species, True, (255, 0, 0))
-        if tile.piece is self.selected_piece:
-            text = font.render(tile.piece.species, True, (0, 180, 180))
+        text = font.render(tile.piece.species, True, self.species_color_map[tile.piece.species])
 
         text_rect = text.get_rect()
         # set the center of the rectangular object.
@@ -186,17 +194,17 @@ class Game:
 
         corners = hexutil.polygon_corners(self.origin, hexutil.Point(tile.x, tile.y), scale)
         pygame.draw.polygon(surface,
-                            ((50, 50, 50), (235, 233, 209))[tile.piece.color == 'W'],
+                            ((50, 50, 50), (222, 220, 193))[tile.piece.color == 'W'],
                             corners,
                             0)
-        pygame.draw.polygon(surface, ((90, 90, 90), (242, 241, 223))[tile.piece.color == 'W'], corners, scale // 12)
-
-
+        if tile.piece is self.selected_piece:
+            pygame.draw.polygon(surface, (55, 250, 250), corners, scale // 8)
+        else:
+            pygame.draw.polygon(surface, ((90, 90, 90), (235, 233, 209))[tile.piece.color == 'W'], corners, scale // 12)
 
     def on_cleanup(self):
         self._running = False
         pygame.quit()
-
 
     def on_execute(self):
         if not self.on_init():
