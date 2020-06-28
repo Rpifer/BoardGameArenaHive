@@ -74,6 +74,7 @@ def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile
         paths_to_extend = possible_paths[:]
         p: deque[Move]
         for p in paths_to_extend:
+            path_to_be_removed = p
             neighbors = hexutil.touching_hexagons(p[-1].position)
             for n in neighbors:
                 if n in movement_cloud and can_slide_to(p[-1].position, n, tiles):
