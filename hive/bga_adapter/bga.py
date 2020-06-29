@@ -1,8 +1,9 @@
 import requests
+from hive.bga_adapter import credentials
 import pprint
 
-user = ''
-pwd = ''
+user = credentials.user
+pwd = credentials.password
 
 url_login = 'http://en.boardgamearena.com/account/account/login.html'
 prm_login = {'email': user, 'password': pwd, 'rememberme': 'on',
