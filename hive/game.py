@@ -87,28 +87,12 @@ class Game:
                 pygame.quit()
         elif event.type == pygame.MOUSEBUTTONDOWN:
             clicked = pygame.mouse.get_pos()
-            if event.button == 4:
-                # prevents getting trapped at small scales
-                self.scale = int(self.scale * 1.15) + 1
-            elif event.button == 5:
-                self.scale = max(int(self.scale * .85), 2)
-            elif event.button == 3:
-                self.drag = True
-                self.last_coord = hexutil.Point(clicked[0], clicked[1])
-
-            elif event.button == 1:
-                clicked = self.convert_to_play_area_coordinates(clicked[0], clicked[1])
-                est = hexutil.pixel_to_closest_hexagon(self.origin,
-                                                       hexutil.Point(clicked[0], clicked[1])
-                                                       , self.scale)
-                if est is not None:
-                    # todo: figure out z axis here
-                    if self.board.space_occupied(est.x, est.y):
-                        self.selected_piece = self.board.piece_at(est.x, est.y, 0)
-                    else:
-                        self.board.add_piece(est.x, est.y, piece.create_rand_piece())
-                else:
-                    self.selected_piece = None
+            clicked = self.convert_to_play_area_coordinates(clicked[0], clicked[1])
+            if clicked[0] > 0 and clicked[1] > 0:
+                self.on_play_area_click(event)
+            else:
+                print(piece)
+                # run player click
 
         elif event.type == pygame.MOUSEBUTTONUP:
             self.drag = False
@@ -122,6 +106,54 @@ class Game:
                 self.origin = hexutil.Point(self.origin.x + (coord.x - self.last_coord.x),
                                             self.origin.y + (coord.y - self.last_coord.y), )
                 self.last_coord = coord
+
+    def on_player_area_click(self, event):
+        clicked = pygame.mouse.get_pos()
+        clicked = self.convert_to_play_area_coordinates(clicked[0], clicked[1])
+
+        if event.button == 4:
+            return
+        elif event.button == 5:
+            return
+        elif event.button == 3:
+            return
+        elif event.button == 1:
+            return
+
+    def on_play_area_click(self, event):
+        clicked = pygame.mouse.get_pos()
+        clicked = self.convert_to_play_area_coordinates(clicked[0], clicked[1])
+
+        if event.button == 4:
+            # prevents getting trapped at small scales
+            self.scale = int(self.scale * 1.15) + 1
+            return
+        elif event.button == 5:
+            self.scale = max(int(self.scale * .85), 2)
+            return
+        elif event.button == 3:
+            self.drag = True
+            self.last_coord = hexutil.Point(clicked[0], clicked[1])
+            return
+
+        elif event.button == 1:
+            est = hexutil.pixel_to_closest_hexagon(self.origin,
+                                                   hexutil.Point(clicked[0], clicked[1]),
+                                                   self.scale)
+            if est is not None:
+                # todo: figure out z axis here
+                if self.board.space_occupied(est.x, est.y):
+                    if self.selected_piece is not None:
+                        self.selected_piece = None
+                        return
+                    z = 0
+                    while self.board.space_occupied(est.x, est.y, z) and z < 7:
+                        z = z + 1
+                    self.selected_piece = self.board.piece_at(est.x, est.y, z - 1)
+
+                else:
+                    self.selected_piece = None
+                    return
 
     def on_loop(self):
         pass
@@ -170,29 +202,28 @@ class Game:
             self._display_surface.blit(label[0], label[1])
 
     def render_board_space(self):
-        labels = []
         self._board_surface.fill((219, 210, 127))
         for tile in self.board.get_occupied_tiles():
-            self.render_piece_in_play(self._board_surface, tile, self.scale, labels)
+            self.render_piece_in_play(self._board_surface, tile, self.scale)
 
         self._display_surface.blit(self._board_surface,
                                    self.convert_from_play_area_coordinates(0, 0))
-        for label in labels:
-            self._display_surface.blit(label[0], label[1])
 
-    def render_piece_in_play(self, surface, tile, scale, labels_to_render):
+    def render_piece_in_play(self, surface, tile, scale):
         font = self.font()
         text = font.render(tile.piece.species, True, self.species_color_map[tile.piece.species])
-
-        text_rect = text.get_rect()
+        offset = 0
+        if tile.z > 0:
+            offset = 5 * tile.z
+        text_rect: pygame.rect = text.get_rect()
         # set the center of the rectangular object.
         center = hexutil.hexagon_to_pixel(self.origin,
                                           hexutil.Point(tile.x, tile.y),
                                           scale)
-        text_rect.center = self.convert_from_play_area_coordinates(center.x, center.y)
-        labels_to_render.append((text, text_rect))
+        text_rect.center = (center.x + offset, center.y + offset)
 
         corners = hexutil.polygon_corners(self.origin, hexutil.Point(tile.x, tile.y), scale)
+        corners = [hexutil.Point(i.x + offset, i.y + offset) for i in corners]
         pygame.draw.polygon(surface,
                             ((50, 50, 50), (222, 220, 193))[tile.piece.color == 'W'],
                             corners,
@@ -201,6 +232,7 @@ class Game:
             pygame.draw.polygon(surface, (55, 250, 250), corners, scale // 8)
         else:
             pygame.draw.polygon(surface, ((90, 90, 90), (235, 233, 209))[tile.piece.color == 'W'], corners, scale // 12)
+        surface.blit(text, text_rect)
 
     def on_cleanup(self):
         self._running = False
@@ -223,5 +255,5 @@ class Game:
 if __name__ == '__main__':
     g = Game()
     g.board = board.new_default_board()
-    g.board.add_piece(0, 0, piece.create_ladybug('W'))
+    g.board.add_piece(0, 0, piece.create_hopper('W'))
     g.on_execute()

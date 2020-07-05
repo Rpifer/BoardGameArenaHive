@@ -15,8 +15,8 @@ class Board:
         while self.space_occupied(x, y, z):
             z = z + 1
 
-        if self.coordinate_exists(x, y, z):
-            if self.space_occupied(x, y, z):
+        if self.coordinate_exists(x, y, 0):
+            if self.space_occupied(x, y, 0):
                 self.play_space[(x, y)].insert(z, p)
             elif z == 0:
                 self.play_space[(x, y)].pop()  # remove placeholder None
@@ -44,7 +44,7 @@ class Board:
             if self.space_occupied(point.x, point.y, 0):
                 for z in range(0, len(p[1])):
                     tiles.append(Tile(point.x, point.y, z, self.piece_at(point.x, point.y, z)))
-        tiles.sort(key=lambda tile: (tile.x, tile.y, tile.z))
+        tiles.sort(key=lambda tile: (tile.z, tile.x, tile.y))
         return tiles
 
 

@@ -34,14 +34,15 @@ def is_one_hive(tiles: List[board.Tile]):
     return tiles_count == len(main_hive)
 
 
-def generate_hive_movement_cloud(tiles: List[board.Tile]):
+def generate_hive_movement_cloud(tiles: List[board.Tile], mover):
     possible_spots = []
     for tile in tiles:
         neighbors = hexutil.touching_hexagons(hexutil.Point(tile.x, tile.y))
         for n in neighbors:
             if n in possible_spots:
                 continue
-            match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y), None)
+            match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y
+                          and tiles[i].z == mover.z), None)
             # if tile not occupied
             if match is None:
                 possible_spots.append(n)
@@ -52,12 +53,17 @@ def generate_valid_moves(moving: board.Tile, tiles: List[board.Tile]):
     temp = tiles[:]
     if moving in temp:
         temp.remove(moving)
-    full_space_without_mover = generate_hive_movement_cloud(temp)
+    full_space_without_mover = generate_hive_movement_cloud(temp, moving)
     possible_moves = []
-    if moving.piece.can_crawl:
-        for possible_move in full_space_without_mover:
+    for possible_move in full_space_without_mover:
+        if moving.piece.can_crawl and can_start_crawl(moving, tiles, moving.z):
             if space_crawable(moving, possible_move, tiles, full_space_without_mover):
                 possible_moves.append(possible_move)
+        if moving.piece.can_hop and can_start_hop(moving, tiles, moving.z):
+            if space_hopable(moving, possible_move, tiles, full_space_without_mover):
+                possible_moves.append(possible_move)
+
+    return possible_moves
     # generate spots that it can go based on rules
     # confirm that it can get to each of those spots via movement rules
     # confirm that each space it will occupy is a valid hive
@@ -69,6 +75,10 @@ def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile
     # todo: add z axis to Move object
     possible_paths[0].append(Move(hexutil.Point(start.x, start.y), 0))
 
+    temp = tiles[:]
+    if start in temp:
+        temp.remove(start)
+
     current_path = possible_paths[0]
     spots = start.piece.crawl_spaces or 20
     for i in range(1, spots + 1):
@@ -79,14 +89,14 @@ def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile
             neighbors = hexutil.touching_hexagons(p[-1].position)
             for n in neighbors:
                 # todo: add z axis in can_slide check
-                if n in movement_cloud and can_slide_to(p[-1].position, n, tiles):
+                if n in movement_cloud and can_slide_to(p[-1].position, n, temp, start.z):
                     # not (dir != p[-1]dir and not p[-2].hex == n)
                     if len(p) >= 2 and p[-2].position == n:
                         continue
                     elif n == end and start.piece.crawl_spaces is None:
                         return True
                     # todo: add in z axis when adding new move (axis of start z, cannot change)
-                    possible_paths.append(p + deque([Move(n, direction_of_crawl(p[-1].position, n, tiles))]))
+                    possible_paths.append(p + deque([Move(n, direction_of_crawl(p[-1].position, n, temp))]))
                     # at end and cannot be moved to
                 elif n == end:
                     return False
@@ -96,6 +106,26 @@ def space_crawable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile
     return any(move[-1].position == end for move in possible_paths)
     # return end in possible_paths[spots]
     # check closest path that can be reached via traversal rules, ie can slide
+
+
+def space_hopable(start: board.Tile, end: hexutil.Point, tiles: List[board.Tile], movement_cloud):
+    # determine if start and end are in the same line
+    x_dist = hexutil.relative_distance_x(hexutil.Point(start.x, start.y), end)
+    y_dist = hexutil.relative_distance_y(hexutil.Point(start.x, start.y), end)
+    angle = angle_of_vector(x_dist, y_dist)
+    if angle % 60 != 0:
+        return False
+    # determine if there are spaces open in that line
+    match = -1
+    space = start
+    while end != space:
+        n = hexutil.touching_hexagons(space)[int(angle / 60)]
+        match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y), None)
+        if match is None and end != n:
+            return False
+        space = n
+    return True
+    # if so and if not then yes
 
 
 def direction_of_crawl(start: hexutil.Point, end: hexutil.Point, tiles: List[board.Tile]):
@@ -135,28 +165,36 @@ def angle_of_vector(x, y):
     if x == 0:
         return int(y > 0) * 180 + 90
 
-    theta = math.degrees(math.atan(abs(y/x)))
+    theta = math.degrees(math.atan(abs(y / x)))
     if x < 0 < y:
-        theta += 90
+        theta = 180 - theta
     elif x < 0 and y < 0:
         theta += 180
     elif x > 0 > y:
-        theta += 270
+        theta = 360 - theta
 
     return theta
 
 
-def can_slide_to(start, end: hexutil.Point, tiles: List[board.Tile]):
+def can_slide_to(start, end: hexutil.Point, tiles: List[board.Tile], z):
     """Assumes start is next to end, remove start before calling
     can slide if end has 2 continuous spaces AND start is in one of those spaces"""
-    # todo, add in z axis for match checkin
-    match = next((i for i in range(0, len(tiles)) if tiles[i].x == end.x and tiles[i].y == end.y), None)
+    # todo, add in z axis for match checking
+    match = next((i for i in range(0, len(tiles)) if tiles[i].x == end.x and tiles[i].y == end.y
+                  and tiles[i].z == z), None)
     # todo, needs to be removed if on top of hive
     # cant slide there if something is already there
     if match is not None:
         return False
 
-    if direction_of_crawl(start, end, tiles) == 0:
+    # if it is a layer up, it NEEDS to have something there to be able to crawl there
+    if z != 0:
+        match = next((i for i in range(0, len(tiles)) if tiles[i].x == end.x and tiles[i].y == end.y
+                      and tiles[i].z == z - 1), None)
+        if match is None:
+            return False
+
+    if direction_of_crawl(start, end, tiles) == 0 and z == 0:
         return False
 
     neighbors = hexutil.touching_hexagons(end)
@@ -165,7 +203,8 @@ def can_slide_to(start, end: hexutil.Point, tiles: List[board.Tile]):
     for j in range(-1, len(neighbors)):
         n = neighbors[j]
         # todo, again add in z axis of start tiles
-        match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y), None)
+        match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y
+                      and tiles[i].z == z), None)
         if match is not None:
             continuous_spaces = 0
             start_in_continuous = False
@@ -178,14 +217,15 @@ def can_slide_to(start, end: hexutil.Point, tiles: List[board.Tile]):
     return False
 
 
-def can_start_crawl(start: hexutil.Point, tiles: List[board.Tile]):
+def can_start_crawl(start: hexutil.Point, tiles: List[board.Tile], z):
     # todo, probably going to need z axis here too
     neighbors = hexutil.touching_hexagons(hexutil.Point(start.x, start.y))
     touches = 0
     max_continuous_touches = 0
     continuous_touches = 0
     for n in neighbors:
-        match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y), None)
+        match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y
+                      and tiles[i].z == z), None)
         if match is not None:
             touches += 1
             continuous_touches += 1
@@ -200,3 +240,23 @@ def can_start_crawl(start: hexutil.Point, tiles: List[board.Tile]):
     else:
         return False
 
+
+def can_start_hop(start: hexutil.Point, tiles: List[board.Tile], z):
+    neighbors = hexutil.touching_hexagons(hexutil.Point(start.x, start.y))
+    touches = 0
+    max_continuous_touches = 0
+    continuous_touches = 0
+    for n in neighbors:
+        match = next((i for i in range(0, len(tiles)) if tiles[i].x == n.x and tiles[i].y == n.y
+                      and tiles[i].z == z), None)
+        if match is not None:
+            touches += 1
+            continuous_touches += 1
+            max_continuous_touches = max(max_continuous_touches, continuous_touches)
+        else:
+            continuous_touches = 0
+
+    if touches == max_continuous_touches:
+        return True
+    else:
+        return False
