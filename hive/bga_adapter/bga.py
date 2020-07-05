@@ -1,6 +1,5 @@
 import requests
-from hive.bga_adapter import credentials
-import pprint
+from hive.bga_adapter.login import credentials
 
 user = credentials.user
 pwd = credentials.password
